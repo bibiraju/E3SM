@@ -294,7 +294,7 @@ contains
     call CNLivewoodTurnover(num_soilp, filter_soilp, &
          carbonstate_vars, nitrogenstate_vars, carbonflux_vars, nitrogenflux_vars,&
          phosphorusstate_vars,phosphorusflux_vars)
-
+               
     ! gather all patch-level litterfall fluxes to the column for litter C and N inputs
 
   end subroutine Phenology
@@ -2469,6 +2469,9 @@ contains
    ! instead of in the OffsetLitterfall subroutine. The harvest index is
    ! determined based on the LPJ model.
    !
+   ! !USES:
+   use pftvarcon , only : biofuel_harvfrac
+   !
    ! !ARGUMENTS:
    integer, intent(in) :: num_pcropp       ! number of prog crop pfts in filter
    integer, intent(in) :: filter_pcropp(:) ! filter for prognostic crop pfts
@@ -2520,9 +2523,13 @@ contains
    ppool_to_grainp       =>    veg_pf%ppool_to_grainp   , & ! Input:  [real(r8) (:)]  allocation to grain P (gP/m2/s)
    hrv_leafc_to_prod1c   =>    veg_cf%hrv_leafc_to_prod1c   , & ! Input:  [real(r8) (:)] crop leafc harvested
    hrv_livestemc_to_prod1c  => veg_cf%hrv_livestemc_to_prod1c, & ! Input:  [real(r8) (:)] crop stemc harvested
+   leafc_to_biofuelc     =>    veg_cf%leafc_to_biofuelc     , & ! Input: [real(r8) (:) ]  leaf C to biofuel C (gC/m2/s)
+   livestemc_to_biofuelc =>    veg_cf%livestemc_to_biofuelc , & ! Input: [real(r8) (:) ]  livestem C to biofuel C (gC/m2/s)
    hrv_grainc_to_prod1c  =>    veg_cf%hrv_grainc_to_prod1c  , & ! Input:  [real(r8) (:)] crop grainc harvested
    hrv_leafn_to_prod1n   =>    veg_nf%hrv_leafn_to_prod1n , & ! Input:  [real(r8) (:)] crop leafn harvested
    hrv_livestemn_to_prod1n  => veg_nf%hrv_livestemn_to_prod1n, & ! Input:  [real(r8) (:)] crop stemn harvested
+   leafn_to_biofueln     =>    veg_nf%leafn_to_biofueln     , & ! Input: [real(r8) (:) ]  leaf N to biofuel N (gN/m2/s)
+   livestemn_to_biofueln =>    veg_nf%livestemn_to_biofueln , & ! Input: [real(r8) (:) ]  livestem N to biofuel N (gN/m2/s)
    hrv_grainn_to_prod1n  =>    veg_nf%hrv_grainn_to_prod1n, & ! Input:  [real(r8) (:)] crop grainn harvested
    hrv_leafp_to_prod1p   =>    veg_pf%hrv_leafp_to_prod1p , & ! Input:  [real(r8) (:)] crop leafp harvested
    hrv_livestemp_to_prod1p  => veg_pf%hrv_livestemp_to_prod1p, & ! Input:  [real(r8) (:)] crop stemp harvested
@@ -2546,13 +2553,13 @@ contains
               !calculate harvested carbon and nitrogen; remaining goes into litterpool
               !except for grain which goes into next years availc for growth after
               !planting
-              hrv_leafc_to_prod1c(p)  = presharv(ivt(p)) * ((t1 * leafc(p)) + cpool_to_leafc(p))
-              hrv_livestemc_to_prod1c(p)  =  presharv(ivt(p)) * ((t1 * livestemc(p)) + cpool_to_livestemc(p))
+              hrv_leafc_to_prod1c(p)  = presharv(ivt(p)) * ((t1 * leafc(p)) + cpool_to_leafc(p)) + t1 * leafc(p) * biofuel_harvfrac(ivt(p))
+              hrv_livestemc_to_prod1c(p)  =  presharv(ivt(p)) * ((t1 * livestemc(p)) + cpool_to_livestemc(p)) + t1 * livestemc(p) * biofuel_harvfrac(ivt(p))
               hrv_grainc_to_prod1c(p) = t1 * grainc(p) + cpool_to_grainc(p)
 
               ! Do the same for Nitrogen
-              hrv_leafn_to_prod1n(p) = presharv(ivt(p)) * ((t1 * leafn(p)) + npool_to_leafn(p))
-              hrv_livestemn_to_prod1n(p) = presharv(ivt(p)) * ((t1 * livestemn(p)) + npool_to_livestemn(p))
+              hrv_leafn_to_prod1n(p) = presharv(ivt(p)) * ((t1 * leafn(p)) + npool_to_leafn(p)) + t1 * leafn(p) * biofuel_harvfrac(ivt(p))
+              hrv_livestemn_to_prod1n(p) = presharv(ivt(p)) * ((t1 * livestemn(p)) + npool_to_livestemn(p)) + t1 * livestemn(p) * biofuel_harvfrac(ivt(p))
               hrv_grainn_to_prod1n(p) = t1 * grainn(p) + npool_to_grainn(p)
 
               ! Do the same for Phosphorus
@@ -2560,6 +2567,14 @@ contains
               hrv_livestemp_to_prod1p(p) = presharv(ivt(p)) * ((t1 * livestemp(p)) + ppool_to_livestemp(p))
               hrv_grainp_to_prod1p(p) = t1 * grainp(p) + ppool_to_grainp(p)
 
+              ! calculate leaf and livestem carbon harvested as biofuel
+              leafc_to_biofuelc(p) = t1 * leafc(p) * biofuel_harvfrac(ivt(p))
+              livestemc_to_biofuelc(p) = t1 * livestemc(p) * biofuel_harvfrac(ivt(p))
+              
+              ! calculate leaf and livestem nitrogen harvested as biofuel
+              leafn_to_biofueln(p) = t1 * leafn(p) * biofuel_harvfrac(ivt(p))
+              livestemn_to_biofueln(p) = t1 * livestemn(p) * biofuel_harvfrac(ivt(p))
+              
          end if ! offseddt_counter
 
       end if ! offset_flag
@@ -2636,9 +2651,13 @@ contains
          frootc_to_litter      =>    veg_cf%frootc_to_litter      , & ! Output: [real(r8) (:) ]  fine root C litterfall (gC/m2/s)                  
          livestemc_to_litter   =>    veg_cf%livestemc_to_litter   , & ! Output: [real(r8) (:) ]  live stem C litterfall (gC/m2/s)                  
          grainc_to_food        =>    veg_cf%grainc_to_food        , & ! Output: [real(r8) (:) ]  grain C to food (gC/m2/s)                         
-
+         leafc_to_biofuelc     =>    veg_cf%leafc_to_biofuelc     , & ! Output: [real(r8) (:) ]  leaf C to biofuel C (gC/m2/s)
+         livestemc_to_biofuelc =>    veg_cf%livestemc_to_biofuelc , & ! Output: [real(r8) (:) ]  livestem C to biofuel C (gC/m2/s)
+         
          livestemn_to_litter   =>    veg_nf%livestemn_to_litter , & ! Output: [real(r8) (:) ]  livestem N to litter (gN/m2/s)                    
          grainn_to_food        =>    veg_nf%grainn_to_food      , & ! Output: [real(r8) (:) ]  grain N to food (gN/m2/s)                         
+         leafn_to_biofueln     =>    veg_nf%leafn_to_biofueln   , & ! Output: [real(r8) (:) ]  leaf N to biofuel N (gN/m2/s)
+         livestemn_to_biofueln =>    veg_nf%livestemn_to_biofueln, & ! Output: [real(r8) (:) ]  livestem N to biofuel N (gN/m2/s)     
          leafn_to_litter       =>    veg_nf%leafn_to_litter     , & ! Output: [real(r8) (:) ]  leaf N litterfall (gN/m2/s)                       
          leafn_to_retransn     =>    veg_nf%leafn_to_retransn   , & ! Output: [real(r8) (:) ]  leaf N to retranslocated N pool (gN/m2/s)         
          frootn_to_litter      =>    veg_nf%frootn_to_litter    , & ! Output: [real(r8) (:) ]  fine root N litterfall (gN/m2/s)                  
@@ -2687,9 +2706,10 @@ contains
                if (ivt(p) >= npcropmin) then
                ! this assumes that offset_counter == dt for crops
                ! if this were ever changed, we'd need to add code to the "else"
-                  leafc_to_litter(p) = (1.0_r8 - presharv(ivt(p))) * ((t1 * leafc(p)) + cpool_to_leafc(p))
+                  leafc_to_litter(p) = (1.0_r8 - presharv(ivt(p))) * ((t1 * leafc(p)) + cpool_to_leafc(p)) - leafc_to_biofuelc(p)
                   frootc_to_litter(p) = t1 * frootc(p) + cpool_to_frootc(p)
-                  livestemc_to_litter(p) = (1.0_r8 - presharv(ivt(p))) * ((t1 * livestemc(p)) + cpool_to_livestemc(p))
+                  livestemc_to_litter(p) = (1.0_r8 - presharv(ivt(p))) * ((t1 * livestemc(p)) + cpool_to_livestemc(p)) - livestemc_to_biofuelc(p)
+                  
                else
                   leafc_to_litter(p)  = t1 * leafc(p)  + cpool_to_leafc(p)
                   frootc_to_litter(p) = t1 * frootc(p) + cpool_to_frootc(p)
@@ -2738,13 +2758,13 @@ contains
                   if (ivt(p) >= npcropmin) then
                      ! this assumes that offset_counter == dt for crops
                      ! if this were ever changed, we'd need to add code to the "else"
-                     leafn_to_litter(p) = (1.0_r8 - presharv(ivt(p))) * ((t1 * leafn(p)) + npool_to_leafn(p))
+                     leafn_to_litter(p) = (1.0_r8 - presharv(ivt(p))) * ((t1 * leafn(p)) + npool_to_leafn(p)) - leafn_to_biofueln(p)
                      leafp_to_litter(p) = (1.0_r8 - presharv(ivt(p))) * ((t1 * leafp(p)) + ppool_to_leafp(p))
 
                      frootn_to_litter(p) = t1 * frootn(p) + npool_to_frootn(p)
                      frootp_to_litter(p) = t1 * frootp(p) + ppool_to_frootp(p)
 
-                     livestemn_to_litter(p) = (1.0_r8 - presharv(ivt(p))) * ((t1 * livestemn(p)) + npool_to_livestemn(p))
+                     livestemn_to_litter(p) = (1.0_r8 - presharv(ivt(p))) * ((t1 * livestemn(p)) + npool_to_livestemn(p)) - livestemn_to_biofueln(p)
                      livestemp_to_litter(p) = (1.0_r8 - presharv(ivt(p))) * ((t1 * livestemp(p)) + ppool_to_livestemp(p))
                         
                   else
