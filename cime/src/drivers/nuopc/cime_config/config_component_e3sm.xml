@@ -196,7 +196,6 @@
     <type>integer</type>
     <default_value>48</default_value>
     <values match="last">
-      <value compset="_CAM\d+%WCBC">144</value>
       <value compset="_CAM\d+%WCMX">288</value>
       <value compset="_CAM\d+%WCXI">288</value>
       <value compset="_DATM%COPYALL_NPS">72</value>

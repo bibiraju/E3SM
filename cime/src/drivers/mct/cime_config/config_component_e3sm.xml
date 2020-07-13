@@ -288,7 +288,6 @@
       <value compset="_XATM">48</value>
       <value compset="_CAM.*">48</value>
       <value compset="_DATM">48</value>
-      <value compset="_CAM\d+%WCBC">144</value>
       <value compset="_CAM\d+%WCMX">288</value>
       <value compset="_CAM\d+%WCXI">288</value>
       <value compset="_CAM%ADIAB">48</value>
@@ -791,7 +790,6 @@
     <desc compset="RCP6_">RCP6.0 future scenario:</desc>
     <desc compset="RCP4_">RCP4.5 future scenario:</desc>
     <desc compset="RCP2_">RCP2.6 future scenario:</desc>
-    <desc compset="2013_">RCP4.5 based scenario from 2013 (control for WACCM/CARMA nuclear winter study):</desc>
     <desc compset="9205_CAM">1992 to 2005 transient:</desc>
     <desc compset="SDYN_CAM">prescribed meteorology: for stand-alone cam</desc>
     <desc compset="AR95_CAM">ARM95 IOP: for stand-alone cam</desc>
